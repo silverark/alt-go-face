@@ -11,8 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"log"
 	"math"
 	"os"
+	"path"
+	"path/filepath"
+	"runtime"
 	"unsafe"
 )
 
@@ -77,6 +81,19 @@ func SquaredEuclideanDistance(d1 Descriptor, d2 Descriptor) (sum float64) {
 	return sum
 }
 
+var (
+	_, b, _, _ = runtime.Caller(0)
+	basePath   = filepath.Dir(b)
+	dataPath = path.Join(basePath, "testdata")
+	modelsPath = path.Join(dataPath, "models")
+
+	cnn = path.Join(modelsPath, "_face_detector.dat")
+	shape = path.Join(modelsPath, "shape_predictor_5_face_landmarks.dat")
+	descr = path.Join(modelsPath, "dlib_face_recognition_resnet_model_v1.dat")
+	gender = path.Join(modelsPath, "dnn_gender_classifier_v1.dat")
+	age = path.Join(modelsPath, "dnn_age_predictor_v1.dat")
+)
+
 // New creates new face with the provided parameters.
 func New(r image.Rectangle, d Descriptor) Face {
 	return Face{Rectangle: r, Descriptor: d, Shapes: []image.Point{}}
@@ -101,6 +118,26 @@ func NewRecognizer() (rec *Recognizer, err error) {
 
 	rec = &Recognizer{ptr}
 	return
+}
+
+func NewConfiguredRecogniser() *Recognizer {
+	rec, err := NewRecognizer()
+	if err != nil {
+		log.Fatalf("Can't init face recognizer: %v", err)
+	}
+
+	rec.SetCNNModel(cnn)
+	rec.SetDescriptorModel(descr)
+	rec.SetShapeModel(shape)
+	rec.SetGenderModel(gender)
+	rec.SetAgeModel(age)
+
+	rec.SetSize(150)
+	rec.SetPadding(0)
+	rec.SetMinImageSize(20)
+	rec.SetJittering(0)
+
+	return rec
 }
 
 func (rec *Recognizer) SetShapeModel(shapePredictorPath string) (err error) {

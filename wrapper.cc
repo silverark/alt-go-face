@@ -266,7 +266,7 @@ facesret* facerec_face_from_buffer(facerec* rec, unsigned char* img_data, int le
         return ret;
     }
 
-    return cls->detect_with_box(ret, img, type, left, top, right, bottom);
+    return cls->detect_with_box(ret, img, left, top, right, bottom);
 }
 
 faceret* facerec_recognize(facerec* rec, image_pointer *p) {
