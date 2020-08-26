@@ -55,6 +55,7 @@ public:
     void setMinImageSize(int);
 
     facesret* detect(facesret *, image_t &, int);
+    facesret* detect_with_box(facesret *, image_t &, int, int, int, int);
     
     std::tuple<descriptor, full_object_detection> recognize(image_pointer *);
     
@@ -62,7 +63,7 @@ public:
     int age(image_pointer *);
     
 	void setSamples(std::vector<descriptor>&&, std::vector<int>&&);
-	int classify(const descriptor&, float);
+	matching classify(const descriptor&, float);
 };
 
 facesret* facerec_detect(facesret*, facerec*,  image_t&, int);

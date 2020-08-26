@@ -1,15 +1,24 @@
 #include <unordered_map>
 #include <dlib/graph_utils.h>
+#include <string>
 #include "classify.h"
+#include "wrapper.h"
 
-int classify_(
+matching classify_(
 	const std::vector<descriptor>& samples,
 	const std::vector<int>& cats,
 	const descriptor& test_sample,
 	float tolerance
 ) {
-	if (samples.size() == 0)
-		return -1;
+
+    matching result;
+    // Defaults to no match
+    result.category = -1;
+    result.category = 100;
+
+	if (samples.size() == 0) {
+        return result;
+    }
 
 	std::vector<std::pair<int, float>> distances;
 	distances.reserve(samples.size());
@@ -24,7 +33,7 @@ int classify_(
 	}
 
 	if (distances.size() == 0)
-		return -1;
+		return result;
 
 	std::sort(
 		distances.begin(), distances.end(),
@@ -55,5 +64,9 @@ int classify_(
 			return hits1 < hits2;
 		}
 	);
-	return hit->first;
+
+    result.category = hit->first;
+    result.distance = hit->second.second;
+
+	return result;
 }

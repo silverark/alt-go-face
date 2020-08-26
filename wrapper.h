@@ -6,6 +6,11 @@
 extern "C" {
 #endif
 
+typedef struct matching {
+    int category;
+    float distance;
+} matching;
+
 typedef enum {
 	IMAGE_LOAD_ERROR,
 	SERIALIZATION_ERROR,
@@ -76,6 +81,7 @@ tracker_ret* get_track_position(tracker* tr);
 
 facerec* facerec_init();
 facesret* facerec_detect_from_file(facerec*, const char*,int);
+facesret* facerec_face_from_file(facerec*, const char*,int, int, int, int);
 facesret* facerec_detect_from_buffer(facerec*, unsigned char*, int, int);
 faceret* facerec_recognize(facerec*, image_pointer*);
 
@@ -90,7 +96,7 @@ void facerec_set_gender(facerec* , const char *);
 void facerec_set_age(facerec* , const char *);
 
 void facerec_set_samples(facerec*, const float*, const int32_t*, int);
-int facerec_classify(facerec*, const float*, float);
+matching facerec_classify(facerec*, const float*, float);
 void facerec_free(facerec*);
 void tracker_free(tracker*);
 

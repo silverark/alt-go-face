@@ -10,7 +10,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/Kagami/go-face"
+	"github.com/silverark/alt-go-face"
 )
 
 var (
@@ -58,11 +58,11 @@ type TrainData struct {
 }
 
 func getTPath(fname string) string {
-	return filepath.Join("testdata", fname)
+	return filepath.Join("testdata/images", fname)
 }
 
 func getIdolData() (idata *IdolData, err error) {
-	data, err := ioutil.ReadFile(getTPath("idols.json"))
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "idols.json"))
 	if err != nil {
 		return
 	}
@@ -124,9 +124,11 @@ func recognizeAndClassify(fpath string, tolerance float32) (id int, err error) {
 	f := faces[0]
 	rec.Recognize(&f)
 	if tolerance < 0 {
-		id = rec.Classify(f.Descriptor)
+		match := rec.Classify(f.Descriptor)
+		id = match.Category
 	} else {
-		id = rec.ClassifyThreshold(f.Descriptor, tolerance)
+		match := rec.ClassifyThreshold(f.Descriptor, tolerance)
+		id = match.Category
 	}
 	return
 }
@@ -175,9 +177,9 @@ func TestNumFaces(t *testing.T) {
 
 func TestEmptyClassify(t *testing.T) {
 	var sample face.Descriptor
-	id := rec.Classify(sample)
+	id := rec.Classify(sample).Category
 	if id >= 0 {
-		t.Fatalf("Shouldn't recognize but got %d category", id)
+		t.Fatalf("Shouldn't recognize but got %d Category", id)
 	}
 }
 
@@ -222,14 +224,14 @@ func TestClassifyThreshold(t *testing.T) {
 		t.Fatalf("Can't recognize: %v", err)
 	}
 	if id >= 0 {
-		t.Fatalf("Shouldn't recognize but got %d category", id)
+		t.Fatalf("Shouldn't recognize but got %d Category", id)
 	}
 	id, err = recognizeAndClassify(getTPath("nana.jpg"), 0.8)
 	if err != nil {
 		t.Fatalf("Can't recognize: %v", err)
 	}
 	if id < 0 {
-		t.Fatalf("Should have recognized but got %d category", id)
+		t.Fatalf("Should have recognized but got %d Category", id)
 	}
 }
 

@@ -10,6 +10,7 @@
 #include "utils.h"
 
 using namespace dlib;
+using namespace std;
 
 FaceRec::FaceRec() {
 	detector_ = get_frontal_face_detector();
@@ -93,13 +94,57 @@ facesret* FaceRec::detect(facesret *ret, image_t &img, int type) {
         ret->p[i].img = new image_t(img);
         ret->p[i].rect = new rectangle(rects[i]);
         ret->p[i].shape = 0;
-        ret->p[i].upped = upped == 0?1:upped;     
+        ret->p[i].upped = upped == 0?1:upped;
 
         long* dst = ret->rectangles + i * RECT_LEN;
         dst[0] = rects[i].left() / ret->p[i].upped;
         dst[1] = rects[i].top() / ret->p[i].upped;
         dst[2] = rects[i].right() / ret->p[i].upped;
         dst[3] = rects[i].bottom() / ret->p[i].upped;
+
+        cout << "\nLeft " << rects[i].left() << std::flush;
+        cout << "\ntop " << rects[i].top() << std::flush;
+        cout << "\nright " << rects[i].right() << std::flush;
+        cout << "\nbottom " << rects[i].bottom() << std::flush;
+
+    }
+	return ret;
+}
+
+facesret* FaceRec::detect_with_box(facesret *ret, image_t &img, int left, int top, int right, int bottom) {
+    std::lock_guard<std::mutex> lock(detector_mutex_);
+	std::vector<rectangle> rects;
+    int upped = 0;
+
+    rects.push_back(rectangle(left,top,right,bottom));
+
+    ret->num_faces = rects.size();
+
+    if (ret->num_faces == 0)
+		return ret;
+
+	std::sort(rects.begin(), rects.end());
+
+	ret->rectangles = (long*)malloc(ret->num_faces * RECT_LEN * sizeof(long));
+    ret->p = new image_pointer[ret->num_faces];
+
+	for (int i = 0; i < ret->num_faces; i++) {
+        ret->p[i].img = new image_t(img);
+        ret->p[i].rect = new rectangle(rects[i]);
+        ret->p[i].shape = 0;
+        ret->p[i].upped = upped == 0?1:upped;
+
+        long* dst = ret->rectangles + i * RECT_LEN;
+        dst[0] = rects[i].left() / ret->p[i].upped;
+        dst[1] = rects[i].top() / ret->p[i].upped;
+        dst[2] = rects[i].right() / ret->p[i].upped;
+        dst[3] = rects[i].bottom() / ret->p[i].upped;
+
+
+        cout << rects[i].left() << std::flush;
+        cout << rects[i].top() << std::flush;
+        cout << rects[i].right() << std::flush;
+        cout << rects[i].bottom() << std::flush;
     }
 	return ret;
 }
@@ -187,7 +232,8 @@ void FaceRec::setSamples(std::vector<descriptor>&& samples, std::vector<int>&& c
     cats_ = std::move(cats);
 }
 
-int FaceRec::classify(const descriptor& test_sample, float tolerance) {
+matching FaceRec::classify(const descriptor& test_sample, float tolerance) {
     std::shared_lock<std::shared_mutex> lock(samples_mutex_);
-    return classify_(samples_, cats_, test_sample, tolerance);
+    matching result = classify_(samples_, cats_, test_sample, tolerance);
+    return result;
 }

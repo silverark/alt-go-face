@@ -1,5 +1,3 @@
-// +build gocv
-
 #pragma once
 #ifndef GOCV_H
 #define GOCV_H

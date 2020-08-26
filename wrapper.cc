@@ -205,8 +205,26 @@ facesret* facerec_detect_from_file(facerec* rec, const char* file,int type) {
 		ret->err_code = UNKNOWN_ERROR;
 		return ret;
 	}
-    
     return cls->detect(ret, img, type);
+}
+
+facesret* facerec_face_from_file(facerec* rec, const char* file, int left, int top, int right, int bottom) {
+	facesret* ret = (facesret*)calloc(1, sizeof(facesret));
+    FaceRec* cls = (FaceRec*)(rec->cls);
+	image_t img;
+
+	try {
+        load_image(img,file);
+	} catch(image_load_error& e) {
+		ret->err_str = strdup(e.what());
+		ret->err_code = IMAGE_LOAD_ERROR;
+		return ret;
+	} catch (std::exception& e) {
+		ret->err_str = strdup(e.what());
+		ret->err_code = UNKNOWN_ERROR;
+		return ret;
+	}
+    return cls->detect_with_box(ret, img, left, top, right, bottom);
 }
 
 facesret* facerec_detect_from_buffer(facerec* rec, unsigned char* img_data, int len,int type) {
@@ -228,6 +246,27 @@ facesret* facerec_detect_from_buffer(facerec* rec, unsigned char* img_data, int 
 	}
     
     return cls->detect(ret, img, type);
+}
+
+facesret* facerec_face_from_buffer(facerec* rec, unsigned char* img_data, int len, int left, int top, int right, int bottom) {
+    FaceRec* cls = (FaceRec*)(rec->cls);
+    facesret* ret = (facesret*)calloc(1, sizeof(facesret));
+    image_t img;
+
+    try {
+        // TODO(Kagami): Support more file types?
+        load_jpeg(img, img_data, size_t(len));
+    } catch(image_load_error& e) {
+        ret->err_str = strdup(e.what());
+        ret->err_code = IMAGE_LOAD_ERROR;
+        return ret;
+    } catch (std::exception& e) {
+        ret->err_str = strdup(e.what());
+        ret->err_code = UNKNOWN_ERROR;
+        return ret;
+    }
+
+    return cls->detect_with_box(ret, img, type, left, top, right, bottom);
 }
 
 faceret* facerec_recognize(facerec* rec, image_pointer *p) {
@@ -287,10 +326,11 @@ void facerec_set_samples(
 	cls->setSamples(std::move(samples), std::move(cats));
 }
 
-int facerec_classify(facerec* rec, const float* c_test_sample, float tolerance) {
+matching facerec_classify(facerec* rec, const float* c_test_sample, float tolerance) {
 	FaceRec* cls = (FaceRec*)(rec->cls);
 	descriptor test_sample = mat(c_test_sample, DESCR_LEN, 1);
-	return cls->classify(test_sample, tolerance);
+	matching result = cls->classify(test_sample, tolerance);
+	return result;
 }
 
 void facerec_free(facerec* rec) {

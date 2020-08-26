@@ -1,6 +1,4 @@
-// +build gocv
-
-#include <dlib/opencv.h> 
+#include <dlib/opencv.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/types_c.h>
 #include "facerec.h"

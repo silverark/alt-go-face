@@ -2,7 +2,7 @@ package face
 
 // #cgo pkg-config: dlib-1
 // #cgo CXXFLAGS: -std=c++1z -Wall -O3 -DNDEBUG -march=native
-// #cgo LDFLAGS: -ljpeg
+// #cgo LDFLAGS: -ljpeg -ldlib
 // #include <stdlib.h>
 // #include <stdint.h>
 // #include "wrapper.h"
@@ -23,6 +23,23 @@ const (
 )
 
 type Gender int
+
+// A structure for the Matching used in Classification.
+type Matching struct {
+	Category int
+	Distance float32
+}
+
+// Check if a Match was found. It will be -1 if not.
+func (m* Matching) MatchFound() bool {
+	if m.Category < 0 {
+		return false
+	}
+	return true
+}
+func (m* Matching) MatchNotFound() bool {
+	return ! m.MatchFound()
+}
 
 const (
 	Female Gender = iota
@@ -260,6 +277,57 @@ func (rec *Recognizer) detectFromFile(type_ int, file string) (faces []Face, err
 	return
 }
 
+func (rec *Recognizer) faceFromFile(file string, left int, top int, right int, bottom int) (faces []Face, err error) {
+	if !fileExists(file) {
+		err = ImageLoadError(fmt.Sprintf("File '%s' not found!", file))
+		return
+	}
+
+	cFile := C.CString(file)
+	cLeft := C.int(left)
+	cTop := C.int(top)
+	cRight := C.int(right)
+	cBottom := C.int(bottom)
+
+	defer C.free(unsafe.Pointer(cFile))
+	ret := C.facerec_face_from_file(rec.ptr, cFile, cLeft, cTop, cRight, cBottom)
+	defer C.free(unsafe.Pointer(ret))
+
+	if ret.err_str != nil {
+		defer C.free(unsafe.Pointer(ret.err_str))
+		err = makeError(C.GoString(ret.err_str), int(ret.err_code))
+		return
+	}
+
+	numFaces := int(ret.num_faces)
+	if numFaces == 0 {
+		return
+	}
+
+	// Copy faces data to Go structure.
+	defer C.free(unsafe.Pointer(ret.rectangles))
+	defer C.free(unsafe.Pointer(ret.p))
+
+	rPtr := unsafe.Pointer(ret.p)
+	rP := (*[1 << 30]C.image_pointer)(rPtr)[:numFaces:numFaces]
+
+	rDataLen := numFaces * rectLen
+	rDataPtr := unsafe.Pointer(ret.rectangles)
+	rData := (*[1 << 30]C.long)(rDataPtr)[:rDataLen:rDataLen]
+
+	for i := 0; i < numFaces; i++ {
+		face := Face{imagePointer: rP[i]}
+		x0 := int(rData[i*rectLen])
+		y0 := int(rData[i*rectLen+1])
+		x1 := int(rData[i*rectLen+2])
+		y1 := int(rData[i*rectLen+3])
+		face.Rectangle = image.Rect(x0, y0, x1, y1)
+		faces = append(faces, face)
+	}
+	return
+}
+
+
 // Detect returns all faces found on the provided image, sorted from
 // left to right. Empty list is returned if there are no faces, error is
 // returned if there was some error while decoding/processing image.
@@ -287,6 +355,11 @@ func (rec *Recognizer) DetectFromFileCNN(imgPath string) (faces []Face, err erro
 
 func (rec *Recognizer) DetectFromFileCustom(imgPath string) (faces []Face, err error) {
 	return rec.detectFromFile(2, imgPath)
+}
+
+// Same as Recognize but accepts image path instead.
+func (rec *Recognizer) FaceFromFile(imgPath string, left int, top int, right int, bottom int) (faces []Face, err error) {
+	return rec.faceFromFile(imgPath, left, top, right, bottom)
 }
 
 func (rec *Recognizer) GetGender(face *Face) {
@@ -341,17 +414,28 @@ func (rec *Recognizer) SetSamples(samples []Descriptor, cats []int32) {
 
 // Classify returns class ID for the given descriptor. Negative index is
 // returned if no match. Thread-safe.
-func (rec *Recognizer) Classify(testSample Descriptor) int {
+func (rec *Recognizer) Classify(testSample Descriptor) Matching {
 	cTestSample := (*C.float)(unsafe.Pointer(&testSample))
-	return int(C.facerec_classify(rec.ptr, cTestSample, -1))
+
+	match := C.facerec_classify(rec.ptr, cTestSample, -1)
+	result := Matching{
+		Category: int(match.category),
+		Distance: float32(match.distance),
+	}
+	return result
 }
 
-// Same as Classify but allows to specify max distance between faces to
+// Same as Classify but allows to specify max Distance between faces to
 // consider it a match. Start with 0.6 if not sure.
-func (rec *Recognizer) ClassifyThreshold(testSample Descriptor, tolerance float32) int {
+func (rec *Recognizer) ClassifyThreshold(testSample Descriptor, tolerance float32) Matching {
 	cTestSample := (*C.float)(unsafe.Pointer(&testSample))
 	cTolerance := C.float(tolerance)
-	return int(C.facerec_classify(rec.ptr, cTestSample, cTolerance))
+	match := C.facerec_classify(rec.ptr, cTestSample, cTolerance)
+	result := Matching{
+		Category: int(match.category),
+		Distance: float32(match.distance),
+	}
+	return result
 }
 
 // Close frees resources taken by the Recognizer. Safe to call multiple

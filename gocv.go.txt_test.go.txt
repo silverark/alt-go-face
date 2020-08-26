@@ -1,0 +1,51 @@
+package face
+
+import (
+	"fmt"
+
+	"gocv.io/x/gocv"
+	"testing"
+)
+
+func TestRecogniseFromMat(t *testing.T) {
+
+	fmt.Printf("Starting test")
+
+	img := gocv.IMRead("testdata/images/jimin.jpg", 1)
+
+	fmt.Printf("%v", img)
+
+	rgb := gocv.NewMat()
+	gocv.CvtColor(img, &rgb, gocv.ColorBGRToRGB)
+
+	rec, _ := NewRecognizer()
+	defer rec.Close()
+
+	fmt.Printf("After new rec created.")
+	const dataDir = "testdata"
+	const cnn = "testdata/models/mmod_human_face_detector.dat"
+	const shape = "testdata/models/shape_predictor_5_face_landmarks.dat"
+	const descr = "testdata/models/dlib_face_recognition_resnet_model_v1.dat"
+	const gender = "testdata/models/dnn_gender_classifier_v1.dat"
+	const age = "testdata/models/dnn_age_predictor_v1.dat"
+	rec.SetCNNModel(cnn)
+	rec.SetDescriptorModel(descr)
+	rec.SetShapeModel(shape)
+	rec.SetGenderModel(gender)
+	rec.SetAgeModel(age)
+
+	fmt.Printf("Before setting size.")
+
+	fmt.Printf("About to detect")
+
+	faces, err := rec.DetectFromMat(img)
+
+	if err != nil {
+		panic(err)
+	}
+
+
+	fmt.Printf("Faces: %v", faces)
+
+
+}
